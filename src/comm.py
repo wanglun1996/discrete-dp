@@ -15,7 +15,6 @@ def quantize(v, k, B):
         u = len(itv) - 1
         while u > l:
             idx = (l+u) // 2
-            # print(idx, itv[idx])
             if itv[idx] == a:
                 return idx
             if itv[idx] > a:
@@ -42,13 +41,24 @@ def randomRotate(v):
     """
     d = len(v)
     diag = np.random.choice([-1, 1], d)
-    diag_matrix = np.diag(diag)
-    h_matrix = hadamard(d)
-    rot_matrix = np.matmul(h_matrix, diag_matrix) / np.sqrt(d)
 
-    return rot_matrix
+    def fwht(v):
+        """In-place Fast Walsh–Hadamard Transform of array a."""
+        h = 1
+        while h < len(v):
+            for i in range(0, len(v), h * 2):
+                for j in range(i, i + h):
+                    x = v[j]
+                    y = v[j + h]
+                    v[j] = x + y
+                    v[j + h] = x - y
+            h *= 2
+        return v
+
+    rot_v = fwht(diag * v) / np.sqrt(d)
+
+    return rot_v
 
 if __name__ == '__main__':
-    # v = [-2, -1, 0, 1, 2, 3, 4]
-    # print(quantize(v, 4, 5))
-    randomRotate(4)
+    v = randomRotate([1, 2, 3, 4])
+    print(np.linalg.norm(v))
