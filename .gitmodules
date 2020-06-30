@@ -1,3 +1,6 @@
 [submodule "discrete-gaussian-differential-privacy"]
 	path = discrete-gaussian-differential-privacy
 	url = https://github.com/IBM/discrete-gaussian-differential-privacy.git
+[submodule "infimnist_py"]
+	path = infimnist_py
+	url = https://github.com/albietz/infimnist_py.git

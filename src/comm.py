@@ -31,9 +31,9 @@ def quantize(v, k, B):
 
     idx = np.array([binarySearch(intervals, x) for x in v])
     idx = np.array([[i, i+1] for i in idx])
-    probs = np.array([[(x-intervals[idx_pair[0]])/step_size, 1-(x-intervals[idx_pair[0]])/step_size] for x, idx_pair in list(zip(v, idx))])
+    probs = np.array([[1-(x-intervals[idx_pair[0]])/step_size, (x-intervals[idx_pair[0]])/step_size] for x, idx_pair in list(zip(v, idx))])
 
-    return np.array([np.random.choice(idx_pair, p=prob) for idx_pair, prob in list(zip(idx, probs))])
+    return np.array([intervals[np.random.choice(idx_pair, p=prob)] for idx_pair, prob in list(zip(idx, probs))])
 
 def randomRotate(v):
     """ random rotate the feature vector
@@ -59,6 +59,12 @@ def randomRotate(v):
 
     return rot_v
 
+def cylicRound(v, step_size, B):
+    return np.array([int((x+B)/step_size)%int(2*B/step_size+1) for x in v])
+
 if __name__ == '__main__':
-    v = randomRotate([1, 2, 3, 4])
+    v = [-4, -3, -2, -1, 1, 2, 3, 4]
+    v = quantize(v, 10, 5)
+    print(np.linalg.norm(v))
+    v = randomRotate(v)
     print(np.linalg.norm(v))
