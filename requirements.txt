@@ -4,3 +4,4 @@ scipy==1.4.1
 matplotlib==3.2.2
 torch==1.5.1
 cython==0.29.20
+torchvision==0.6.1
