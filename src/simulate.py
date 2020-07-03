@@ -1,9 +1,12 @@
 import argparse
 import numpy as np
+import torch
 import torchvision
 from torch.utils.data import Dataset, DataLoader
 from networks import MultiLayerPerceptron
 from data import gen_infimnist, MyDataset
+import torch.nn.functional as F
+from torch import nn, optim, hub
 
 FEATURE_TEMPLATE = '../data/infimnist_feature_%d_%d.npy'
 TARGET_TEMPLATE = '../data/infimnist_target_%d_%d.npy'
@@ -43,9 +46,15 @@ if __name__ == '__main__':
         network = MultiLayerPerceptron()
         #TODO: do we need momentum?
         optimizer = optim.SGD(network.parameters(), lr=LEARNING_RATE)
-        
-        examples = enumerate(dataset_loader)
-        batch_idx, (feature, target) = next(examples)
-        print(feature)
 
-        
+        for t in range(10):
+            for batch_idx, (feature, target) in enumerate(dataset_loader):
+                feature = torch.flatten(feature, start_dim=1)
+                target = torch.tensor(target, dtype=torch.long)
+                optimizer.zero_grad()
+                output = network(feature)
+                loss = F.nll_loss(output, target)
+                loss.backward()
+                optimizer.step()
+                if batch_idx % 10 == 0:
+                    print(batch_idx, loss)
