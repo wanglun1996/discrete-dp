@@ -53,8 +53,8 @@ if __name__ == '__main__':
 
         for t in range(10):
             for batch_idx, (feature, target) in enumerate(dataset_loader):
-                feature = torch.flatten(feature, start_dim=1)
-                target = torch.tensor(target, dtype=torch.long)
+                feature = torch.flatten(feature, start_dim=1).to(device)
+                target = target.type(torch.long).to(device)
                 optimizer.zero_grad()
                 output = network(feature)
                 loss = F.nll_loss(output, target)
