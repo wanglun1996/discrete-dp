@@ -28,6 +28,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     DEVICE = "cuda:" + args.device
+    print(torch.cuda.is_available())
+    print(torch.backends.cudnn.enabled)
+    device = torch.device(DEVICE if torch.cuda.is_available() else "cpu")
+    print(device)
     DATASET = args.dataset
     NWORKER = args.nworker
     PERROUND = args.perround
@@ -43,7 +47,7 @@ if __name__ == '__main__':
         batch_size = 5
         dataset_loader = DataLoader(MyDataset(FEATURE_TEMPLATE%(0,100), TARGET_TEMPLATE%(0,100), transform=transform), batch_size=batch_size, shuffle=True)
 
-        network = MultiLayerPerceptron()
+        network = MultiLayerPerceptron().to(device)
         #TODO: do we need momentum?
         optimizer = optim.SGD(network.parameters(), lr=LEARNING_RATE)
 
