@@ -45,7 +45,7 @@ def random_diag(d):
     return np.random.choice([-1, 1], d)
 
 # FIXME: add random matrix as an argument
-def rotate(v, diag=None):
+def rotate(v, diag=None, reverse=False):
     """ random rotate the feature vector
         v: feature vector, the dimension must be a power of 2
     """
@@ -65,8 +65,10 @@ def rotate(v, diag=None):
                     v[j + h] = x - y
             h *= 2
         return v
-
-    rot_v = fwht(diag * v) / np.sqrt(d)
+    if reverse:
+        rot_v = fwht(v) * diag / np.sqrt(d)
+    else:
+        rot_v = fwht(diag * v) / np.sqrt(d)
 
     return rot_v
 
@@ -74,8 +76,11 @@ def cylicRound(v, step_size, B):
     return np.array([int((x+B)/step_size)%int(2*B/step_size+1) for x in v])
 
 if __name__ == '__main__':
-    v = [-4, -3, -2, -1, 1, 2, 3, 4]
-    v = quantize(v, 10, 5)
-    print(np.linalg.norm(v))
-    v = randomRotate(v)
-    print(np.linalg.norm(v))
+    v = [1, 2, 3, 4]
+    print(v)
+    diag = random_diag(len(v))
+    print(diag)
+    v = rotate(v, diag)
+    print(v)
+    v = rotate(v, diag, reverse=True)
+    print(v)

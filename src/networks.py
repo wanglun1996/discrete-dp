@@ -10,8 +10,8 @@ def get_nn_params(model):
         for s in list(p.size()):
             nn = nn*s
         pp += nn
-    pp = int(2**np.ceil(np.log2(pp)))
-    return pp
+    pp_ = int(2**np.ceil(np.log2(pp)))
+    return pp, pp_
 
 # FIXME: wrap flatten_params in this function
 def flatten_params(params, size=None, grad=False):

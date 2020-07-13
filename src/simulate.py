@@ -21,12 +21,12 @@ if __name__ == '__main__':
     parser.add_argument('--nworker', type=int, default=100)
     parser.add_argument('--perround', type=int, default=10)
     parser.add_argument('--localiter', type=int, default=5)
-    parser.add_argument('--epoch', type=int, default=2) 
+    parser.add_argument('--epoch', type=int, default=100) 
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--batchsize', type=int, default=10)
     parser.add_argument('--checkpoint', type=int, default=10)
     # L2 Norm bound for clipping gradient
-    parser.add_argument('--clipbound', type=float, default=100.)
+    parser.add_argument('--clipbound', type=float, default=1.)
     # The number of levels for quantization and the L_inf bound for quantization
     parser.add_argument('--quanlevel', type=int, default=2*10+1)
     parser.add_argument('--quanbound', type=float, default=1.)
@@ -86,9 +86,9 @@ if __name__ == '__main__':
         network = ConvNet().to(device)
 
     # generate random rotation matrix
-    param_size = get_nn_params(network)
+    plain_size, param_size = get_nn_params(network)
     DIAG = random_diag(param_size)
-    DIAG_INVERSE = -DIAG
+    # DIAG_INVERSE = -DIAG
 
     # Split into multiple training set
     TRAIN_SIZE = len(train_set) // NWORKER
@@ -124,7 +124,6 @@ if __name__ == '__main__':
         for p in list(network.parameters()):
            params_copy.append(p.clone())
         params_flat_copy = flatten_params(list(network.parameters()), param_size)
-        # print(params_flat_copy)
         for c in choices:
             print(c)
             for iepoch in range(0, LOCALITER):
@@ -134,28 +133,26 @@ if __name__ == '__main__':
                     optimizer.zero_grad()
                     output = network(feature)
                     loss = criterion(output, target)
-                    # network.zero_grad()
                     loss.backward()
                     optimizer.step()
-                    # local_grad += flatten_params(network.parameters(), param_size, grad=True)
 
             # compute the difference
             local_grads[c] = params_flat_copy - flatten_params(network.parameters(), param_size)
+            local_grads[c] = clip_gradient(local_grads[c], CLIP_BOUND)
+            local_grads[c] = rotate(local_grads[c], DIAG)
             # manually restore the parameters of the global network
             with torch.no_grad():
                 for idx, p in enumerate(list(network.parameters())):
                     p.copy_(params_copy[idx])
 
-            # print(local_grad)
-            # local_grads[c] = clip_gradient(local_grad, CLIP_BOUND)
-
+        # aggregation
         average_grad = np.zeros(param_size)
         for c in choices:
             average_grad = average_grad + local_grads[c] / PERROUND
         # print(average_grad)
 
         params = list(network.parameters())
-        # print(flatten_params(params, param_size))
+        average_grad = rotate(average_grad, DIAG, reverse=True)
         average_grad = recon_params(average_grad, network)
         with torch.no_grad():
             for idx in range(len(params)):
