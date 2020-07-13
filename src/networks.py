@@ -1,6 +1,44 @@
 import torch
 from torch import nn, optim, hub
 import torch.nn.functional as F
+import numpy as np
+
+def get_nn_params(model):
+    pp=0
+    for p in list(model.parameters()):
+        nn=1
+        for s in list(p.size()):
+            nn = nn*s
+        pp += nn
+    pp = int(2**np.ceil(np.log2(pp)))
+    return pp
+
+# FIXME: wrap flatten_params in this function
+def flatten_params(params, size=None, grad=False):
+    res = []
+    for p in list(params):
+        if isinstance(p, torch.Tensor):
+            if grad:
+                p = p.grad.cpu().numpy()
+                # print("p: ", p)
+            else:
+                p = p.data.cpu().numpy()
+        res = np.concatenate((res, p.flatten()))
+    if size is None:
+        size = int(2**np.ceil(np.log2(len(res))))
+    res = np.concatenate((res, np.zeros(size-len(res))))
+    return res
+
+# FIXME: check the correctness of the function
+def recon_params(params, model):
+    ptr = 0
+    res = []
+    for p in list(model.parameters()):
+        shape = p.data.cpu().numpy().shape
+        size = np.prod(shape)
+        res.append(np.reshape(params[ptr:ptr+size], shape))
+        ptr += size
+    return res
 
 class MultiLayerPerceptron(nn.Module):
 
@@ -118,3 +156,18 @@ class ResNet(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
+
+if __name__ == '__main__':
+    params = [np.array([[1, 2], [3, 4]]), np.array([5, 6])]
+    flat = flatten_params(params)
+    print(flat)
+    ptr = 0
+    res = []
+    for p in list(params):
+        shape = p.shape
+        print(shape)
+        size = np.prod(shape)
+        res.append(np.reshape(flat[ptr:ptr+size], shape))
+        ptr += size
+    print(res)
+

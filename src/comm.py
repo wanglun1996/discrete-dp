@@ -1,6 +1,12 @@
 import numpy as np
 from scipy.linalg import hadamard
 
+def clip_gradient(v, clip_bound=1.):
+    norm = np.linalg.norm(v)
+    if norm <= clip_bound:
+        return v
+    return v / norm
+
 def quantize(v, k, B):
     """stochastic k-level quantization protocol
        v: the vector to be quantized
@@ -35,12 +41,17 @@ def quantize(v, k, B):
 
     return np.array([intervals[np.random.choice(idx_pair, p=prob)] for idx_pair, prob in list(zip(idx, probs))])
 
-def randomRotate(v):
+def random_diag(d):
+    return np.random.choice([-1, 1], d)
+
+# FIXME: add random matrix as an argument
+def rotate(v, diag=None):
     """ random rotate the feature vector
         v: feature vector, the dimension must be a power of 2
     """
     d = len(v)
-    diag = np.random.choice([-1, 1], d)
+    if diag is None:
+        diag = np.random.choice([-1, 1], d)
 
     def fwht(v):
         """In-place Fast Walsh–Hadamard Transform of array a."""
