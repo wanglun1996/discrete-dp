@@ -1,0 +1,9 @@
+general parameters: clip_bound, quantize_level, quantize_bound (= clip_bound)
+
+discrete-gaussian: repeat 10 times
+parameters: sigma
+record: (1) every 10 rounds, record the accuracy, privacy budget, communication cost
+
+binomiaml mechanism: repeat 10 times
+parameters: eps, delta
+record: (1) every 10 rounds, record the accuracy, privacy budget, communication cost

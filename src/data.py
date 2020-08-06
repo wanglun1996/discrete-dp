@@ -29,6 +29,15 @@ def gen_infimnist(start=0, end=10000, split=0.8):
     indexes = np.array(np.arange(start, end), dtype=np.int64)
     digits, labels = mnist.gen(indexes)
     digits = digits.astype(np.float32).reshape(-1, 28, 28)
+    print(digits.shape)
+    print(labels.shape)
+    ind_list = np.arange(labels.shape[0])
+    np.random.shuffle(ind_list)
+    print(ind_list)
+    digits = digits[ind_list]
+    print(digits.shape)
+    labels = labels[ind_list]
+    print(labels.shape)
     sidx = int(end * split)
     train_digits = digits[:sidx]
     test_digits = digits[sidx:]
@@ -43,10 +52,11 @@ def gen_infimnist(start=0, end=10000, split=0.8):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--size', type=int, default=10000)
+    parser.add_argument('--size', type=int, default=10000000)
     args = parser.parse_args()
 
     gen_infimnist(0, args.size)
+
     # dataset_loader = DataLoader(MyDataset(FEATURE_TEMPLATE%(0,100), TARGET_TEMPLATE%(0,100)))
     # examples = enumerate(dataset_loader)
     # batch_idx, (feature, target) = next(examples)

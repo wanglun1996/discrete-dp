@@ -15,31 +15,15 @@ def quantize(v, k, B):
     """
     intervals = np.linspace(-B, B, num=k)
     step_size = 2 * B / (k-1)
-
-    def binarySearch(itv, a):
-        l = 0
-        u = len(itv) - 1
-        while u > l:
-            idx = (l+u) // 2
-            if itv[idx] == a:
-                return idx
-            if itv[idx] > a:
-                u = idx
-                if l == u:
-                    return l-1
-            if itv[idx] < a:
-                l = idx+1
-                if l == u:
-                    if itv[l] <= a:
-                        return l
-                    else:
-                        return l-1
-
-    idx = np.array([binarySearch(intervals, x) for x in v])
+    idx = [int((x+B) // step_size) for x in v]
     idx = np.array([[i, i+1] for i in idx])
     probs = np.array([[1-(x-intervals[idx_pair[0]])/step_size, (x-intervals[idx_pair[0]])/step_size] for x, idx_pair in list(zip(v, idx))])
 
     return np.array([intervals[np.random.choice(idx_pair, p=prob)] for idx_pair, prob in list(zip(idx, probs))])
+
+# def reverse_quantize(v, k, B):
+#     intervals = np.linspace(-B, B, num=k)
+#     return np.array([intervals[int(idx)] for idx in v])
 
 def random_diag(d):
     return np.random.choice([-1, 1], d)
@@ -72,15 +56,13 @@ def rotate(v, diag=None, reverse=False):
 
     return rot_v
 
-def cylicRound(v, step_size, B):
-    return np.array([int((x+B)/step_size)%int(2*B/step_size+1) for x in v])
+def cylicRound(v, k, B):
+    intervals = np.linspace(-B, B, num=k)
+    step_size = 2 * B / (k-1)
+
+    return np.array([intervals[int((x+B)/step_size)%int(2*B/step_size+1)] for x in v])
 
 if __name__ == '__main__':
-    v = [1, 2, 3, 4]
-    print(v)
-    diag = random_diag(len(v))
-    print(diag)
-    v = rotate(v, diag)
-    print(v)
-    v = rotate(v, diag, reverse=True)
+    v = [-11, -12, 11, 12]
+    v = cylicRound(v, 21, 10)
     print(v)
