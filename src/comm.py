@@ -60,9 +60,9 @@ def cylicRound(v, k, B):
     intervals = np.linspace(-B, B, num=k)
     step_size = 2 * B / (k-1)
 
-    return np.array([intervals[int((x+B)/step_size)%int(2*B/step_size+1)] for x in v])
+    return np.array([intervals[int((x+B)/step_size)%k] for x in v])
 
 if __name__ == '__main__':
     v = [-11, -12, 11, 12]
-    v = cylicRound(v, 21, 10)
+    v = cylicRound(v, 41, 10)
     print(v)

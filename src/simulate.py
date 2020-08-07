@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import torch
 import torchvision
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, random_split, TensorDataset, Subset
 from networks import MultiLayerPerceptron, ConvNet, get_nn_params, flatten_params, recon_params
 from data import gen_infimnist, MyDataset
 import torch.nn.functional as F
@@ -16,20 +16,22 @@ import pickle as pkl
 FEATURE_TEMPLATE = '../data/infimnist_%s_feature_%d_%d.npy'
 TARGET_TEMPLATE = '../data/infimnist_%s_target_%d_%d.npy'
 
-RESULT_TEMPLATE = '../results/pkl/%s-%s-%f.pkl'
+RESULT_TEMPLATE = '../results/pkl/%s-%s-%s-%d-%d-%f.pkl'
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='0')
     parser.add_argument('--dataset', default='INFIMNIST')
-    parser.add_argument('--datasize', default=10000000)
+    parser.add_argument('--datasize', type=int, default=10000000)
     parser.add_argument('--nworker', type=int, default=100000)
     parser.add_argument('--perround', type=int, default=100)
     parser.add_argument('--localiter', type=int, default=5)
-    parser.add_argument('--epoch', type=int, default=20) 
+    parser.add_argument('--epoch', type=int, default=100) 
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--batchsize', type=int, default=10)
+    # 'homo' or 'hetero'
+    parser.add_argument('--dist', default='homo')
     parser.add_argument('--checkpoint', type=int, default=1)
     # L2 Norm bound for clipping gradient
     parser.add_argument('--clipbound', type=float, default=0.25)
@@ -37,7 +39,7 @@ if __name__ == '__main__':
     # FIXME: np.sqrt(d)
     parser.add_argument('--quanlevel', type=int, default=2*100+1)
     # The size of the additive group used in secure aggregation
-    parser.add_argument('--cylicbound', type=float, default=1.)
+    # parser.add_argument('--cylicbound', type=float, default=3.)
     # The variance of the discrete Gaussian noise
     # non-private, dis-gauss, and binom
     parser.add_argument('--dp', default='dis-gauss')
@@ -69,9 +71,6 @@ if __name__ == '__main__':
     INTERVAL = 2 * QUANTIZE_BOUND / (QUANTIZE_LEVEL-1)
     Q = INTERVAL / 2
     S = 1
-    CYLIC_BOUND = args.cylicbound
-    CYLIC_LEVEL = int(CYLIC_BOUND / INTERVAL + 1)
-    NBIT = np.ceil(np.log2(CYLIC_LEVEL))
     DP = args.dp
     SIGMA2 = args.sigma2
     SENSITIVITY  = 4 * CLIP_BOUND
@@ -82,7 +81,6 @@ if __name__ == '__main__':
     DELTA_TOT = args.deltatot
     DEBUG = args.debug
     S = 1
-    
 
     if DATASET == 'INFIMNIST':
 
@@ -119,21 +117,40 @@ if __name__ == '__main__':
     M = int(1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF / INTERVAL))
     EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
     EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
+    NBIT = np.ceil(np.log2(M + QUANTIZE_LEVEL))
+    CYLIC_BOUND = 2**NBIT
+    CYLIC_LEVEL = int(CYLIC_BOUND / INTERVAL + 1)
 
     # Split into multiple training set
     TRAIN_SIZE = len(train_set) // NWORKER
     assert TRAIN_SIZE > 0, "Each worker should have at least one data point!"
     # print(len(train_set), NWORKER, TRAIN_SIZE, BATCH_SIZE)
-    sizes = []
-    sum = 0
-    for i in range(0, NWORKER):
-        sizes.append(TRAIN_SIZE)
-        sum = sum + TRAIN_SIZE
-    sizes[0] = sizes[0] + len(train_set)  - sum
-    train_sets = random_split(train_set, sizes)
     train_loaders = []
-    for trainset in train_sets:
-        train_loaders.append(DataLoader(trainset, **params))
+    if args.dist == 'homo':
+        sizes = []
+        sum = 0
+        for i in range(0, NWORKER):
+            sizes.append(TRAIN_SIZE)
+            sum = sum + TRAIN_SIZE
+        sizes[0] = sizes[0] + len(train_set)  - sum
+        train_sets = random_split(train_set, sizes)
+        for trainset in train_sets:
+            train_loaders.append(DataLoader(trainset, **params))
+
+    elif args.dist == 'hetero':
+        # FIXME: add CIFAR10 case
+        idx = train_set.target==0
+        feature = train_set.feature[idx]
+        target = train_set.target[idx]
+        for i in range(1, 10):
+            idx = train_set.target==i
+            feature = np.concatenate((feature, train_set.feature[idx]), 0)
+            target = np.concatenate((target, train_set.target[idx]), 0)
+        feature = torch.Tensor(feature)
+        target = torch.Tensor(target)
+        train_set = TensorDataset(feature, target)
+        for i in range(0, NWORKER):
+            train_loaders.append(DataLoader(Subset(train_set, range(i*TRAIN_SIZE, (i+1)*TRAIN_SIZE)), **params))
 
     # define training loss
     criterion = nn.CrossEntropyLoss()
@@ -158,6 +175,7 @@ if __name__ == '__main__':
         # select workers per subset 
         print("Epoch: ", epoch)
         choices = np.random.choice(NWORKER, PERROUND)
+        # print(choices)
         # copy network parameters
         params_copy = []
         for p in list(network.parameters()):
@@ -167,7 +185,7 @@ if __name__ == '__main__':
             # print(c)
             for iepoch in range(0, LOCALITER):
                 for idx, (feature, target) in enumerate(train_loaders[c], 0):
-                    feature = feature.to(device)
+                    feature = feature.view(-1, 28*28).to(device)
                     target = target.type(torch.long).to(device)
                     optimizer.zero_grad()
                     output = network(feature)
@@ -186,10 +204,9 @@ if __name__ == '__main__':
                     local_grads[c] = add_gauss(local_grads[c], SIGMA2 / PERROUND, INTERVAL)
                 else:
                     local_grads[c] += np.random.normal(0., np.sqrt(SIGMA2 / PERROUND), size=len(local_grads[c]))
+                local_grads[c] = cylicRound(local_grads[c], CYLIC_LEVEL, CYLIC_BOUND)
             elif DP == 'binom':
                 local_grads[c] = add_binom(local_grads[c], M / PERROUND, P, INTERVAL)
-            if DEBUG == 'n':
-                local_grads[c] = cylicRound(local_grads[c], CYLIC_LEVEL, CYLIC_BOUND)
             
             # manually restore the parameters of the global network
             with torch.no_grad():
@@ -228,7 +245,6 @@ if __name__ == '__main__':
                 eps = acct.get_eps(DELTA_TOT)
             elif DP == 'binom':
                 eps = np.sqrt(2*(epoch+1)*np.log(1./(DELTA_TOT-epoch*DELTA)))*EPS + (epoch+1)*EPS*(np.exp(EPS)-1)
-                print(eps)
             if DP != 'non-private':
                 results['privacy'].append(eps)
             results['accuracy'].append((100. * correct / len(test_loader.dataset)).data)
@@ -237,10 +253,10 @@ if __name__ == '__main__':
             print('\nTest set: Avg. loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(test_loss, correct, len(test_loader.dataset), 100. * correct / len(test_loader.dataset)))
 
     if DP == 'dis-gauss':
-        output = open(RESULT_TEMPLATE%(DATASET, DP, SIGMA2), 'wb')
+        output = open(RESULT_TEMPLATE%(DATASET, DP, args.dist, QUANTIZE_LEVEL, NBIT, SIGMA2), 'wb')
     elif DP == 'binom':
-        output = open(RESULT_TEMPLATE%(DATASET, DP, INTERVAL*INTERVAL*M*P*(1-P)), 'wb')
+        output = open(RESULT_TEMPLATE%(DATASET, DP, args.dist, QUANTIZE_LEVEL, NBIT, 0), 'wb')
     else:
-        output = open(RESULT_TEMPLATE%(DATASET, DP, 0), 'wb')
+        output = open(RESULT_TEMPLATE%(DATASET, DP, args.dist, 0, 0, 0), 'wb')
     pkl.dump(results, output)
     output.close()

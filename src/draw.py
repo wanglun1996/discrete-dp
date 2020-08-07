@@ -7,17 +7,19 @@ matplotlib.rc('ytick', labelsize=20)
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-RESULT_TEMPLATE = '../results/pkl/%s-%s-%f.pkl'
+RESULT_TEMPLATE = '../results/pkl/%s-%s-%d-%d-%f.pkl'
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', default='INFIMNIST')
     parser.add_argument('--dp', default='dis-gauss')
+    parser.add_argument('--nbit', type=int, default=20)
+    parser.add_argument('--quanlevel', type=int, default=201)
     parser.add_argument('--param', type=float, default=0.25)
     args = parser.parse_args()
 
-    pkl_file = open(RESULT_TEMPLATE%(args.dataset, args.dp, args.param), 'rb')
+    pkl_file = open(RESULT_TEMPLATE%(args.dataset, args.dp, args.quanlevel, args.nbit, args.param), 'rb')
     mydict = pkl.load(pkl_file)
     pkl_file.close()
 
