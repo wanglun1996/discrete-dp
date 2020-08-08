@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 RESULT_TEMPLATE = '../results/pkl/%s-%s-%d-%d-%f.pkl'
+PDF_TEMPLATE = '../results/pdf/%s-%s-%d-%d-%f.pdf'
 
 if __name__ == '__main__':
 
@@ -38,5 +39,5 @@ if __name__ == '__main__':
     # plt.legend()
     # plt.grid(True)
 
-    with PdfPages("../results/pdf/example.pdf") as pdf:
+    with PdfPages(PDF_TEMPLATE%(args.dataset, args.dp, args.quanlevel, args.nbit, args.param)) as pdf:
         pdf.savefig(bbox_inches='tight')
