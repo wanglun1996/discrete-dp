@@ -13,13 +13,15 @@ def quantize(v, k, B):
        k: the level of quantization
        B: the upper and lower bound
     """
-    intervals = np.linspace(-B, B, num=k)
+    def interval(x):
+        return -B + 2*B/(k-1) * x
+
     step_size = 2 * B / (k-1)
     idx = [int((x+B) // step_size) for x in v]
     idx = np.array([[i, i+1] for i in idx])
-    probs = np.array([[1-(x-intervals[idx_pair[0]])/step_size, (x-intervals[idx_pair[0]])/step_size] for x, idx_pair in list(zip(v, idx))])
+    probs = np.array([[1-(x-interval(idx_pair[0]))/step_size, (x-interval(idx_pair[0]))/step_size] for x, idx_pair in list(zip(v, idx))])
 
-    return np.array([intervals[np.random.choice(idx_pair, p=prob)] for idx_pair, prob in list(zip(idx, probs))])
+    return np.array([interval(np.random.choice(idx_pair, p=prob)) for idx_pair, prob in list(zip(idx, probs))])
 
 # def reverse_quantize(v, k, B):
 #     intervals = np.linspace(-B, B, num=k)
@@ -57,10 +59,13 @@ def rotate(v, diag=None, reverse=False):
     return rot_v
 
 def cylicRound(v, k, B):
-    intervals = np.linspace(-B, B, num=k)
+
+    def interval(x):
+        return -B + 2*B/(k-1) * x
+
     step_size = 2 * B / (k-1)
 
-    return np.array([intervals[int((x+B)/step_size)%k] for x in v])
+    return np.array([interval(int((x+B)/step_size)%k) for x in v])
 
 if __name__ == '__main__':
     v = [-11, -12, 11, 12]

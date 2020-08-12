@@ -120,8 +120,8 @@ if __name__ == '__main__':
     EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
     EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
     NBIT = 2**np.ceil(np.log2(np.ceil(np.log2(M + QUANTIZE_LEVEL))))
-    if NBIT > args.nbit:
-        raise NotImplementedError
+    # if NBIT > args.nbit:
+    #     raise NotImplementedError
     NBIT = args.nbit
     CYLIC_BOUND = 2**NBIT
     M = int(CYLIC_BOUND - QUANTIZE_LEVEL)
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         for p in list(network.parameters()):
            params_copy.append(p.clone())
         params_flat_copy = flatten_params(list(network.parameters()), param_size)
-        for c in tqdm(choices):
+        for c in choices:
             # print(c)
             for iepoch in range(0, LOCALITER):
                 for idx, (feature, target) in enumerate(train_loaders[c], 0):
