@@ -115,19 +115,19 @@ if __name__ == '__main__':
     SENSINF = QUANTIZE_LEVEL + 1
     SENS1 = np.sqrt(plain_size) * CLIP_BOUND / Q + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q) + 4 * np.log(2 / args.delta) / 3
     SENS2 = CLIP_BOUND / Q + np.sqrt(SENS1 + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q))
-    M = 1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF / INTERVAL)
+    M = 1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF)
     # M = int(2**np.ceil(np.log2(M)))
     EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
     EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
     NBIT = 2**np.ceil(np.log2(np.ceil(np.log2(M + QUANTIZE_LEVEL))))
-    # if NBIT > args.nbit:
-    #     raise NotImplementedError
     NBIT = args.nbit
     CYLIC_BOUND = 2**NBIT
-    M = int(CYLIC_BOUND - QUANTIZE_LEVEL)
+    if DP == 'binom':
+        QUANTIZE_LEVEL = int(CYLIC_BOUND - M)
+    # M = int(CYLIC_BOUND - QUANTIZE_LEVEL)
     CYLIC_LEVEL = int(CYLIC_BOUND / INTERVAL + 1)
-    print(M)
-    print(NBIT)
+    # print(M)
+    # print(NBIT)
 
     # Split into multiple training set
     TRAIN_SIZE = len(train_set) // NWORKER
