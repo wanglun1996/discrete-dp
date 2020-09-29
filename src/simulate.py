@@ -95,7 +95,6 @@ if __name__ == '__main__':
                                        torchvision.transforms.Normalize(
                                          (0.1307,), (0.3081,))])
 
-        # read in the dataset with numpy array split them and then use data loader to wrap them
         train_set = MyDataset(FEATURE_TEMPLATE%('train',0,SIZE), TARGET_TEMPLATE%('train',0,SIZE), transform=transform)
         test_loader = DataLoader(MyDataset(FEATURE_TEMPLATE%('test',0,10000), TARGET_TEMPLATE%('test',0,10000), transform=transform), batch_size=BATCH_SIZE)
 
@@ -116,44 +115,17 @@ if __name__ == '__main__':
 
     # generate random rotation matrix
     plain_size, param_size = get_nn_params(network)
-    print(plain_size)
     DIAG = random_diag(param_size)
     SENSINF = QUANTIZE_LEVEL + 1
     SENS1 = np.sqrt(plain_size) * CLIP_BOUND / Q + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q) + 4 * np.log(2 / args.delta) / 3
     SENS2 = CLIP_BOUND / Q + np.sqrt(SENS1 + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q))
-    # MLB = int(1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF))
-    # M = 2 / P / (1-P) / INTERVAL / INTERVAL
-    # if M < MLB:
     M = int(CYLIC_BOUND / np.log(PERROUND) - QUANTIZE_LEVEL)
     EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
     EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
-    # if DP == 'binom':
-    #     NBIT = int(np.ceil(np.log2(QUANTIZE_LEVEL + M)))
-    # if EPS > 1:
-    #     QUANTIZE_LEVEL =  QUANTIZE_LEVEL * 2 - 1
-    #     INTERVAL = 2 * QUANTIZE_BOUND / (QUANTIZE_LEVEL-1)
-    #     Q = INTERVAL / 2
-    #     CYLIC_LEVEL = int(CYLIC_BOUND / INTERVAL + 1)
-    #     SENSINF = QUANTIZE_LEVEL + 1
-    #     SENS1 = np.sqrt(plain_size) * CLIP_BOUND / Q + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q) + 4 * np.log(2 / args.delta) / 3
-    #     SENS2 = CLIP_BOUND / Q + np.sqrt(SENS1 + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q))
-        # MLB = int(1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF))
-        # M = 1 / P / (1-P) / INTERVAL / INTERVAL
-        # if M < MLB:
-        # M = CYLIC_BOUND - QUANTIZE_LEVEL
-        # EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
-        # EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
-
-    # print(INTERVAL)
-    # print(M)
-    # print(NBIT)
-    print(EPS)
-
 
     # Split into multiple training set
     TRAIN_SIZE = len(train_set) // NWORKER
     assert TRAIN_SIZE > 0, "Each worker should have at least one data point!"
-    # print(len(train_set), NWORKER, TRAIN_SIZE, BATCH_SIZE)
     train_loaders = []
     if args.dist == 'homo':
         sizes = []
@@ -167,7 +139,6 @@ if __name__ == '__main__':
             train_loaders.append(DataLoader(trainset, **params))
 
     elif args.dist == 'hetero':
-        # FIXME: add CIFAR10 case
         idx = train_set.target==0
         feature = train_set.feature[idx]
         target = train_set.target[idx]
@@ -204,17 +175,18 @@ if __name__ == '__main__':
         # select workers per subset 
         print("Epoch: ", epoch)
         choices = np.random.choice(NWORKER, PERROUND)
-        # print(choices)
         # copy network parameters
         params_copy = []
         for p in list(network.parameters()):
            params_copy.append(p.clone())
         params_flat_copy = flatten_params(list(network.parameters()), param_size)
         for c in tqdm(choices):
-            # print(c)
             for iepoch in range(0, LOCALITER):
                 for idx, (feature, target) in enumerate(train_loaders[c], 0):
-                    feature = feature.view(-1, 784).to(device)
+                    if DATASET == 'INFIMNIST':
+                        feature = feature.view(-1, 784).to(device)
+                    elif DATASET == 'CIFAR10':
+                        feature = feature.to(device)
                     target = target.type(torch.long).to(device)
                     optimizer.zero_grad()
                     output = network(feature)

@@ -15,6 +15,11 @@ Enter the python3.7 virtual environment.
 source ./venv/bin/activate
 ```
 
+Enter the source repo and run the command to generate the data.
+```bash
+python data.py --size 10000000
+```
+
 Reproduce the evaluation results by filling in the corresponding parameters:
 ```bash
 python simulate.py --device XX --quanlevel XX --nbit XX --dp XX --sigma2 XX

@@ -13,14 +13,12 @@ def get_nn_params(model):
     pp_ = int(2**np.ceil(np.log2(pp)))
     return pp, pp_
 
-# FIXME: wrap flatten_params in this function
 def flatten_params(params, size=None, grad=False):
     res = []
     for p in list(params):
         if isinstance(p, torch.Tensor):
             if grad:
                 p = p.grad.cpu().numpy()
-                # print("p: ", p)
             else:
                 p = p.data.cpu().numpy()
         res = np.concatenate((res, p.flatten()))
@@ -29,7 +27,6 @@ def flatten_params(params, size=None, grad=False):
     res = np.concatenate((res, np.zeros(size-len(res))))
     return res
 
-# FIXME: check the correctness of the function
 def recon_params(params, model):
     ptr = 0
     res = []
@@ -156,18 +153,3 @@ class ResNet(nn.Module):
         out = out.view(out.size(0), -1)
         out = self.linear(out)
         return out
-
-if __name__ == '__main__':
-    params = [np.array([[1, 2], [3, 4]]), np.array([5, 6])]
-    flat = flatten_params(params)
-    print(flat)
-    ptr = 0
-    res = []
-    for p in list(params):
-        shape = p.shape
-        print(shape)
-        size = np.prod(shape)
-        res.append(np.reshape(flat[ptr:ptr+size], shape))
-        ptr += size
-    print(res)
-

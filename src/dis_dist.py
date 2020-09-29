@@ -3,10 +3,6 @@ import numpy as np
 from scipy.stats import dlaplace, norm
 from dis_gauss import discretegauss
 
-# def dis_laplace(mu=0., b=1., L=1., size=1):
-#     """p=e^(-a)"""
-#     return dlaplace.rvs(L/b, loc=mu, size=size)
-
 def dis_gauss_slow(sigma2=1.0, L=1.0, size=None):
     if size is None:
         return L * discretegauss.sample_dgauss(sigma2/L/L)
@@ -47,8 +43,3 @@ def add_binom(v, m, p, L):
     """
     noise = np.random.binomial(m, p, size=len(v))
     return v + L * (noise - m * p)
-
-if __name__ == '__main__':
-    # v = [1, 2, 3, 4]
-    # print(add_binomial(v, 10, 0.5, 1))
-    print(dis_gauss(size=10))

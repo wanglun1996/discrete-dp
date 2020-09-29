@@ -23,14 +23,9 @@ def quantize(v, k, B):
 
     return np.array([interval(np.random.choice(idx_pair, p=prob)) for idx_pair, prob in list(zip(idx, probs))])
 
-# def reverse_quantize(v, k, B):
-#     intervals = np.linspace(-B, B, num=k)
-#     return np.array([intervals[int(idx)] for idx in v])
-
 def random_diag(d):
     return np.random.choice([-1, 1], d)
 
-# FIXME: add random matrix as an argument
 def rotate(v, diag=None, reverse=False):
     """ random rotate the feature vector
         v: feature vector, the dimension must be a power of 2
@@ -66,8 +61,3 @@ def cylicRound(v, k, B):
     step_size = 2 * B / (k-1)
 
     return np.array([interval(int((x+B)/step_size)%k) for x in v])
-
-if __name__ == '__main__':
-    v = [-11, -12, 11, 12]
-    v = cylicRound(v, 41, 10)
-    print(v)
