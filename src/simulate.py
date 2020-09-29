@@ -116,6 +116,7 @@ if __name__ == '__main__':
 
     # generate random rotation matrix
     plain_size, param_size = get_nn_params(network)
+    print(plain_size)
     DIAG = random_diag(param_size)
     SENSINF = QUANTIZE_LEVEL + 1
     SENS1 = np.sqrt(plain_size) * CLIP_BOUND / Q + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q) + 4 * np.log(2 / args.delta) / 3
@@ -123,7 +124,7 @@ if __name__ == '__main__':
     # MLB = int(1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF))
     # M = 2 / P / (1-P) / INTERVAL / INTERVAL
     # if M < MLB:
-    M = CYLIC_BOUND - QUANTIZE_LEVEL
+    M = int(CYLIC_BOUND / np.log(PERROUND) - QUANTIZE_LEVEL)
     EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
     EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
     # if DP == 'binom':
@@ -213,7 +214,7 @@ if __name__ == '__main__':
             # print(c)
             for iepoch in range(0, LOCALITER):
                 for idx, (feature, target) in enumerate(train_loaders[c], 0):
-                    feature = feature.view(-1, 28*28).to(device)
+                    feature = feature.view(-1, 784).to(device)
                     target = target.type(torch.long).to(device)
                     optimizer.zero_grad()
                     output = network(feature)

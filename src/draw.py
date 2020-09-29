@@ -33,7 +33,7 @@ if __name__ == '__main__':
     for priv, acc in zip(privacy, accuracy):
         print("%f,\t%f"%(priv, acc.item()))
     # print(privacy)
-    # print(accuracy)
+    print(accuracy)
     print(1)
     ax = plt.subplot()
     ax.set_xscale("log", nonposx='clip')
