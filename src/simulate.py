@@ -9,7 +9,7 @@ from data import gen_infimnist, MyDataset
 import torch.nn.functional as F
 from torch import nn, optim, hub
 from comm import *
-from dis_dist import add_gauss, add_binom, add_gauss_slow
+from dis_dist import add_gauss, add_binom
 from autodp import rdp_bank, rdp_acct, dp_acct, privacy_calibrator
 import pickle as pkl
 
