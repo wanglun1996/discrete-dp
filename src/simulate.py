@@ -9,7 +9,7 @@ from data import gen_infimnist, MyDataset
 import torch.nn.functional as F
 from torch import nn, optim, hub
 from comm import *
-from dis_dist import add_gauss, add_binom, add_gauss_slow
+from dis_dist import add_gauss, add_binom, add_gauss_slow, dis_gauss
 from autodp import rdp_bank, rdp_acct, dp_acct, privacy_calibrator
 import pickle as pkl
 
@@ -87,7 +87,6 @@ if __name__ == '__main__':
     CYLIC_BOUND = 2**NBIT
     CYLIC_LEVEL = int(CYLIC_BOUND / INTERVAL + 1)
 
-
     if DATASET == 'INFIMNIST':
 
         transform=torchvision.transforms.Compose([
@@ -121,32 +120,9 @@ if __name__ == '__main__':
     SENSINF = QUANTIZE_LEVEL + 1
     SENS1 = np.sqrt(plain_size) * CLIP_BOUND / Q + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q) + 4 * np.log(2 / args.delta) / 3
     SENS2 = CLIP_BOUND / Q + np.sqrt(SENS1 + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q))
-    # MLB = int(1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF))
-    # M = 2 / P / (1-P) / INTERVAL / INTERVAL
-    # if M < MLB:
     M = int(CYLIC_BOUND / np.log(PERROUND) - QUANTIZE_LEVEL)
     EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
     EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
-    # if DP == 'binom':
-    #     NBIT = int(np.ceil(np.log2(QUANTIZE_LEVEL + M)))
-    # if EPS > 1:
-    #     QUANTIZE_LEVEL =  QUANTIZE_LEVEL * 2 - 1
-    #     INTERVAL = 2 * QUANTIZE_BOUND / (QUANTIZE_LEVEL-1)
-    #     Q = INTERVAL / 2
-    #     CYLIC_LEVEL = int(CYLIC_BOUND / INTERVAL + 1)
-    #     SENSINF = QUANTIZE_LEVEL + 1
-    #     SENS1 = np.sqrt(plain_size) * CLIP_BOUND / Q + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q) + 4 * np.log(2 / args.delta) / 3
-    #     SENS2 = CLIP_BOUND / Q + np.sqrt(SENS1 + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q))
-        # MLB = int(1 / P / (1-P) * max(23*np.log(10*plain_size/args.delta), 2*SENSINF))
-        # M = 1 / P / (1-P) / INTERVAL / INTERVAL
-        # if M < MLB:
-        # M = CYLIC_BOUND - QUANTIZE_LEVEL
-        # EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
-        # EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
-
-    # print(INTERVAL)
-    # print(M)
-    # print(NBIT)
     print(EPS)
 
 
@@ -203,6 +179,7 @@ if __name__ == '__main__':
     for epoch in range(EPOCH):
         # select workers per subset 
         print("Epoch: ", epoch)
+        noise = dis_gauss(SIGMA2, INTERVAL, param_size) / PERROUND
         choices = np.random.choice(NWORKER, PERROUND)
         # print(choices)
         # copy network parameters
@@ -214,7 +191,10 @@ if __name__ == '__main__':
             # print(c)
             for iepoch in range(0, LOCALITER):
                 for idx, (feature, target) in enumerate(train_loaders[c], 0):
-                    feature = feature.view(-1, 784).to(device)
+                    if args.dataset == 'INFIMNIST':
+                        feature = feature.view(-1, 784).to(device)
+                    else:
+                        feature = feature.to(device)
                     target = target.type(torch.long).to(device)
                     optimizer.zero_grad()
                     output = network(feature)
@@ -230,7 +210,8 @@ if __name__ == '__main__':
                 local_grads[c] = quantize(local_grads[c], QUANTIZE_LEVEL, QUANTIZE_BOUND)
             if DP == 'dis-gauss':
                 if DEBUG == 'n':
-                    local_grads[c] = add_gauss(local_grads[c], SIGMA2 / PERROUND, INTERVAL)
+                    #FIXME: fix this part
+                    local_grads[c] += noise # add_gauss(local_grads[c], SIGMA2 / PERROUND, INTERVAL)
                 else:
                     local_grads[c] += np.random.normal(0., np.sqrt(SIGMA2 / PERROUND), size=len(local_grads[c]))
                 local_grads[c] = cylicRound(local_grads[c], CYLIC_LEVEL, CYLIC_BOUND)

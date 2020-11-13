@@ -16,9 +16,9 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', default='INFIMNIST')
     parser.add_argument('--dp', default='dis-gauss')
     parser.add_argument('--dist', default='homo')
-    parser.add_argument('--nbit', type=int, default=20)
+    parser.add_argument('--nbit', type=int, default=16)
     parser.add_argument('--quanlevel', type=int, default=201)
-    parser.add_argument('--param', type=float, default=0.25)
+    parser.add_argument('--param', type=float, default=0.36)
     args = parser.parse_args()
 
     pkl_file = open(RESULT_TEMPLATE%(args.dataset, args.dp, args.dist, args.quanlevel, args.nbit, args.param), 'rb')
