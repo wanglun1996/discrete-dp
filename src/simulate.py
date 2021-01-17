@@ -103,6 +103,7 @@ if __name__ == '__main__':
 
     elif DATASET == 'CIFAR10':
 
+        print('here')
         transform = torchvision.transforms.Compose([
                                          torchvision.transforms.CenterCrop(24), 
                                          torchvision.transforms.ToTensor(), 
@@ -112,6 +113,18 @@ if __name__ == '__main__':
         test_loader = DataLoader(torchvision.datasets.CIFAR10(root='../data', train=False, download=True, transform=transform))
 
         network = ConvNet().to(device)
+        print('there')
+
+    elif DATASET == 'SVHN':
+        dataset = torchvision.datasets.SVHN(root='../data', download=True, transform=torchvision.transforms.ToTensor())
+        test_size = 12000
+        train_size = len(dataset) - test_size
+        train_set, test_set = random_split(dataset, [train_size, test_size])
+        test_loader = DataLoader(test_set)
+
+        network = SvhnModel(3072, out_size=10).to(device)
+
+    # elif DATASET == 'celebA':
 
     # generate random rotation matrix
     plain_size, param_size = get_nn_params(network)

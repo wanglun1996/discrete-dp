@@ -4,3 +4,6 @@
 [submodule "discrete-gaussian-differential-privacy"]
 	path = discrete-gaussian-differential-privacy
 	url = https://github.com/IBM/discrete-gaussian-differential-privacy.git
+[submodule "leaf"]
+	path = leaf
+	url = https://github.com/TalwalkarLab/leaf.git
