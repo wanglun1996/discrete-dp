@@ -7,3 +7,5 @@ cython==0.29.20
 torchvision==0.6.1
 tqdm==4.48.0
 autodp==0.1.1
+pandas==1.2.0
+requests==2.25.1

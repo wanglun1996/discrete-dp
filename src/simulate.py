@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torchvision
 from torch.utils.data import Dataset, DataLoader, random_split, TensorDataset, Subset
-from networks import MultiLayerPerceptron, ConvNet, get_nn_params, flatten_params, recon_params
+from networks import MultiLayerPerceptron, SvhnModel, ConvNet, VGG16, get_nn_params, flatten_params, recon_params
 from data import gen_infimnist, MyDataset
 import torch.nn.functional as F
 from torch import nn, optim, hub
@@ -103,7 +103,6 @@ if __name__ == '__main__':
 
     elif DATASET == 'CIFAR10':
 
-        print('here')
         transform = torchvision.transforms.Compose([
                                          torchvision.transforms.CenterCrop(24), 
                                          torchvision.transforms.ToTensor(), 
@@ -113,7 +112,6 @@ if __name__ == '__main__':
         test_loader = DataLoader(torchvision.datasets.CIFAR10(root='../data', train=False, download=True, transform=transform))
 
         network = ConvNet().to(device)
-        print('there')
 
     elif DATASET == 'SVHN':
         dataset = torchvision.datasets.SVHN(root='../data', download=True, transform=torchvision.transforms.ToTensor())
@@ -124,11 +122,24 @@ if __name__ == '__main__':
 
         network = SvhnModel(3072, out_size=10).to(device)
 
-    # elif DATASET == 'celebA':
+    elif DATASET == 'celebA':
+
+        transform = torchvision.transforms.Compose([
+                               torchvision.transforms.CenterCrop((178, 178)),
+                               torchvision.transforms.Resize((128, 128)),
+                               torchvision.transforms.ToTensor()])
+
+  
+        train_set_raw = torchvision.datasets.CelebA(root='../data', split='train', download=True, transform=transform)
+        train_set = torch.utils.data.Subset(train_set_raw, list(range(0, len(train_set_raw), 5)))
+        # print(len(train_set), "******")
+        test_loader = DataLoader(torchvision.datasets.CelebA(root='../data', split='test', download=True, transform=transform))
+
+        network = VGG16(num_features=128*128, num_classes=2).to(device)
 
     # generate random rotation matrix
     plain_size, param_size = get_nn_params(network)
-    print(plain_size)
+    # print(plain_size)
     DIAG = random_diag(param_size)
     SENSINF = QUANTIZE_LEVEL + 1
     SENS1 = np.sqrt(plain_size) * CLIP_BOUND / Q + np.sqrt(2 * np.sqrt(plain_size) * CLIP_BOUND * np.log(2 / args.delta) / Q) + 4 * np.log(2 / args.delta) / 3
@@ -136,7 +147,7 @@ if __name__ == '__main__':
     M = int(CYLIC_BOUND / np.log(PERROUND) - QUANTIZE_LEVEL)
     EPS_ = SENS2 * np.sqrt(2 * np.log(1.25/args.delta)) / S / np.sqrt(M*P*(1-P)) +(SENS2 * 5 * np.sqrt(np.log(10/args.delta)) / 2 + SENS1 / 3) / S / M / P / (1-P) / (1-args.delta/10)  + (2 * SENSINF * np.log(1.25/args.delta) / 3 + 2 * SENSINF * np.log(20*plain_size/args.delta) * np.log(10/args.delta) / 3) / S / M / P / (1-P)
     EPS = np.log(1+SUBSAMPLING_RATE * (np.exp(EPS_)-1))
-    print(EPS)
+    # print(EPS)
 
 
     # Split into multiple training set
@@ -208,7 +219,11 @@ if __name__ == '__main__':
                         feature = feature.view(-1, 784).to(device)
                     else:
                         feature = feature.to(device)
-                    target = target.type(torch.long).to(device)
+                    if args.dataset == 'celebA':
+                        target = target[:, 20].type(torch.long).to(device)
+                    else:
+                        target = target.type(torch.long).to(device)
+                    # print(target)
                     optimizer.zero_grad()
                     output = network(feature)
                     loss = criterion(output, target)
@@ -258,7 +273,10 @@ if __name__ == '__main__':
             with torch.no_grad():
                 for feature, target in test_loader:
                     feature = feature.to(device)
-                    target = target.type(torch.long).to(device)
+                    if args.dataset == 'celebA':
+                        target = target[:, 20].type(torch.long).to(device)
+                    else:
+                        target = target.type(torch.long).to(device)
                     output = network(feature)
                     test_loss += F.cross_entropy(output, target).item()
                     pred = output.data.max(1, keepdim=True)[1]

@@ -2,3 +2,5 @@ venv
 *.pyc
 *.npy
 *cifar*
+data/celeba
+data/train*
