@@ -135,7 +135,7 @@ if __name__ == '__main__':
         # print(len(train_set), "******")
         test_loader = DataLoader(torchvision.datasets.CelebA(root='../data', split='test', download=True, transform=transform))
 
-        network = VGG16(num_features=128*128, num_classes=2).to(device)
+        network = torch.nn.DataParallel(VGG16(num_features=128*128, num_classes=2), device_ids=[1, 5]).to(device)
 
     # generate random rotation matrix
     plain_size, param_size = get_nn_params(network)
