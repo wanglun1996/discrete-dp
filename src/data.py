@@ -1,6 +1,6 @@
 import sys
 sys.path.append('../infimnist_py')
-import _infimnist as infimnist
+# import _infimnist as infimnist
 import numpy as np
 import argparse
 from torch.utils.data import Dataset, DataLoader
